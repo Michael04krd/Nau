@@ -6,7 +6,7 @@ import java.util.List;
 // Сервис для работы с товарами. Тут основная бизнес-логика работы интернет-магазина
 
 public interface ProductService {
-    void addProduct(Long id, String name, String category, double price, int quantity);
+    void addProduct(String name, String category, double price, int quantity);
 
     Product findById(Long id);
 

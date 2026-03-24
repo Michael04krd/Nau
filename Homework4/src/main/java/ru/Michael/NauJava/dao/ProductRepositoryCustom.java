@@ -7,4 +7,6 @@ import java.util.List;
 
 public interface ProductRepositoryCustom {
     List<Product> findByNameContainingAndPriceLessThan(String namePart, double price);
+
+    List<Product> findByCategoryAndMaxPrice(String categoryName, double maxPrice);
 }

@@ -10,12 +10,12 @@ import ru.Michael.NauJava.entity.Customer;
 import ru.Michael.NauJava.entity.Order;
 import ru.Michael.NauJava.entity.OrderItem;
 import ru.Michael.NauJava.entity.Product;
+import ru.Michael.NauJava.exception.EntityNotFoundException;
+import ru.Michael.NauJava.exception.BusinessException;
+
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-
-// Реализация сервиса заказов
-// Работает транзакционно
 
 @Service
 public class OrderServiceImpl implements OrderService {
@@ -36,11 +36,9 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public Order createOrder(Long customerId, List<OrderItemRequest> items) {
-        // Находим покупателя
         Customer customer = customerRepository.findById(customerId)
-                .orElseThrow(() -> new RuntimeException("Customer not found with id: " + customerId));
+                .orElseThrow(() -> new EntityNotFoundException("Customer", customerId));
 
-        // Создаём заказ
         Order order = new Order();
         order.setCustomer(customer);
         order.setOrderDate(LocalDateTime.now());
@@ -48,22 +46,18 @@ public class OrderServiceImpl implements OrderService {
 
         double totalAmount = 0.0;
 
-        // Создаём позиции заказа
         for (OrderItemRequest itemRequest : items) {
             Product product = productRepository.findById(itemRequest.productId())
-                    .orElseThrow(() -> new RuntimeException("Product not found with id: " + itemRequest.productId()));
+                    .orElseThrow(() -> new EntityNotFoundException("Product", itemRequest.productId()));
 
-            // Есть ли на складе
             if (product.getQuantity() < itemRequest.quantity()) {
-                throw new RuntimeException("Not enough stock for product: " + product.getName() +
-                        ". Available: " + product.getQuantity() + ", requested: " + itemRequest.quantity());
+                throw new BusinessException("Недостаточно товара на складе: " + product.getName() +
+                        ". Доступно: " + product.getQuantity() + ", запрошено: " + itemRequest.quantity());
             }
 
-            // Уменьшили на складе
             product.setQuantity(product.getQuantity() - itemRequest.quantity());
             productRepository.save(product);
 
-            // Создали позицию
             OrderItem item = new OrderItem();
             item.setProduct(product);
             item.setQuantity(itemRequest.quantity());

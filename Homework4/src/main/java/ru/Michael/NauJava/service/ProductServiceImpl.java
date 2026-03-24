@@ -6,10 +6,10 @@ import ru.Michael.NauJava.dao.ProductRepository;
 import ru.Michael.NauJava.dao.CategoryRepository;
 import ru.Michael.NauJava.entity.Category;
 import ru.Michael.NauJava.entity.Product;
-import java.util.List;
-import java.util.Optional;
+import ru.Michael.NauJava.exception.EntityNotFoundException;
+import ru.Michael.NauJava.exception.BusinessException;
 
-// Реализация сервиса товаров. Работает с категориями и выполняет основные операции
+import java.util.List;
 
 @Service
 public class ProductServiceImpl implements ProductService {
@@ -18,20 +18,19 @@ public class ProductServiceImpl implements ProductService {
     private final CategoryRepository categoryRepository;
 
     @Autowired
-    public ProductServiceImpl(ProductRepository productRepository, CategoryRepository categoryRepository) {
+    public ProductServiceImpl(ProductRepository productRepository,
+                              CategoryRepository categoryRepository) {
         this.productRepository = productRepository;
         this.categoryRepository = categoryRepository;
     }
 
     @Override
-    public void addProduct(Long id, String name, String categoryName, double price, int quantity) {
+    public void addProduct(String name, String categoryName, double price, int quantity) {
         Product product = new Product();
-        product.setId(id);  // JPA сам сгенерит ID
         product.setName(name);
         product.setPrice(price);
         product.setQuantity(quantity);
 
-        // Находим или создаем категорию
         Category category = categoryRepository.findByName(categoryName)
                 .orElseGet(() -> {
                     Category newCategory = new Category();
@@ -45,7 +44,8 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public Product findById(Long id) {
-        return productRepository.findById(id).orElse(null);
+        return productRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Product", id));
     }
 
     @Override
@@ -62,26 +62,19 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public void updatePrice(Long id, double price) {
-        Optional<Product> optionalProduct = productRepository.findById(id);
-        if (optionalProduct.isPresent()) {
-            Product product = optionalProduct.get();
-            product.setPrice(price);
-            productRepository.save(product);
-        }
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Product", id));
+        product.setPrice(price);
+        productRepository.save(product);
     }
 
     @Override
     public void sellProduct(Long id, int quantity) {
-        Optional<Product> optionalProduct = productRepository.findById(id);
-        if (optionalProduct.isEmpty()) {
-            System.out.println("Продукт не найден!");
-            return;
-        }
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Product", id));
 
-        Product product = optionalProduct.get();
         if (quantity > product.getQuantity()) {
-            System.out.println("Заявленное количество (" + quantity + ") больше допустимого (" + product.getQuantity() + ")");
-            return;
+            throw new BusinessException("Недостаточно товара на складе. Доступно: " + product.getQuantity());
         }
 
         product.setQuantity(product.getQuantity() - quantity);
@@ -91,6 +84,9 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public void deleteProduct(Long id) {
+        if (!productRepository.existsById(id)) {
+            throw new EntityNotFoundException("Product", id);
+        }
         productRepository.deleteById(id);
     }
 }

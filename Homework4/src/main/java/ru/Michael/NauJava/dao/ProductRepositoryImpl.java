@@ -2,11 +2,9 @@ package ru.Michael.NauJava.dao;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-import jakarta.persistence.criteria.CriteriaBuilder;
-import jakarta.persistence.criteria.CriteriaQuery;
-import jakarta.persistence.criteria.Predicate;
-import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.*;
 import org.springframework.stereotype.Repository;
+import ru.Michael.NauJava.entity.Category;
 import ru.Michael.NauJava.entity.Product;
 
 import java.util.List;
@@ -30,6 +28,21 @@ public class ProductRepositoryImpl implements ProductRepositoryCustom {
         Predicate pricePredicate = cb.lessThan(product.get("price"), price);
 
         query.select(product).where(cb.and(namePredicate, pricePredicate));
+
+        return entityManager.createQuery(query).getResultList();
+    }
+
+    @Override
+    public List<Product> findByCategoryAndMaxPrice(String categoryName, double maxPrice) {
+        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+        CriteriaQuery<Product> query = cb.createQuery(Product.class);
+        Root<Product> product = query.from(Product.class);
+        Join<Product, Category> category = product.join("category");
+
+        Predicate categoryPredicate = cb.equal(category.get("name"), categoryName);
+        Predicate pricePredicate = cb.lessThan(product.get("price"), maxPrice);
+
+        query.select(product).where(cb.and(categoryPredicate, pricePredicate));
 
         return entityManager.createQuery(query).getResultList();
     }
